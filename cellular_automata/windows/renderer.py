@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import math
 import tkinter as tk
+from typing import Any
 from tkinter import ttk
 
-from ..core import AppState, CellData, build_automaton_rows, best_text_color
+from ..core import AppState, CellData, advance_row, build_automaton_rows, best_text_color
 
 
 class RendererWindow(tk.Toplevel):
@@ -28,6 +29,8 @@ class RendererWindow(tk.Toplevel):
         self.drag_anchor = None
         self.pending_redraw = None
         self.row_cache: list[list[CellData]] = []
+        self.row_cache_offset = 0
+        self.cache_signature = self._state_signature()
 
         self.canvas.bind("<Configure>", self.schedule_redraw)
         self.canvas.bind("<ButtonPress-1>", self.start_pan)
@@ -95,6 +98,58 @@ class RendererWindow(tk.Toplevel):
 
     def invalidate_cache(self) -> None:
         self.row_cache = []
+        self.row_cache_offset = 0
+        self.cache_signature = self._state_signature()
+
+    def _state_signature(self) -> tuple[Any, ...]:
+        return (
+            self.state.shape,
+            self.state.placement,
+            self.state.cell_size,
+            self.state.rows,
+            self.state.cols,
+            self.state.starting_state,
+            tuple(self.state.titles),
+            tuple(
+                (cell.text, cell.background)
+                for row in self.state.cells
+                for cell in row
+            ),
+        )
+
+    def _row_cache_limit(self) -> int:
+        height = max(self.canvas.winfo_height(), 1)
+        size = max(float(self.state.cell_size), 1.0)
+        visible_rows = max(1, int(math.ceil(height / size)) + 4)
+        return max(96, visible_rows * 4)
+
+    def _ensure_row_cache(self, first_generation: int, last_generation: int) -> None:
+        first_generation = max(0, first_generation)
+        last_generation = max(first_generation, last_generation)
+        cache_limit = self._row_cache_limit()
+
+        if not self.row_cache or first_generation < self.row_cache_offset:
+            self.row_cache = build_automaton_rows(
+                self.state.starting_state,
+                last_generation + 1,
+                self.state.cols,
+                self.state.cells,
+                self.state.titles,
+            )
+            self.row_cache_offset = 0
+        else:
+            cache_end = self.row_cache_offset + len(self.row_cache) - 1
+            if last_generation > cache_end:
+                next_row = self.row_cache[-1]
+                for _generation in range(cache_end + 1, last_generation + 1):
+                    next_row = advance_row(next_row, self.state.cols, self.state.cells, self.state.titles)
+                    self.row_cache.append(next_row)
+
+        desired_start = max(first_generation, last_generation - cache_limit + 1)
+        trim = desired_start - self.row_cache_offset
+        if trim > 0:
+            self.row_cache = self.row_cache[trim:]
+            self.row_cache_offset = desired_start
 
     def _cell_fill(self, cell: CellData) -> str:
         background = cell.background.lower()
@@ -114,6 +169,10 @@ class RendererWindow(tk.Toplevel):
         self.pending_redraw = None
         self.canvas.delete("all")
 
+        signature = self._state_signature()
+        if signature != self.cache_signature:
+            self.invalidate_cache()
+
         width = max(self.canvas.winfo_width(), 1)
         height = max(self.canvas.winfo_height(), 1)
         self.status.configure(
@@ -128,17 +187,11 @@ class RendererWindow(tk.Toplevel):
         else:
             self._draw_square_grid(width, height)
 
+        self.cache_signature = signature
+
     def _row_for_generation(self, generation: int) -> list[CellData]:
-        required_rows = max(generation + 1, self.state.rows)
-        if len(self.row_cache) < required_rows:
-            self.row_cache = build_automaton_rows(
-                self.state.starting_state,
-                required_rows,
-                self.state.cols,
-                self.state.cells,
-                self.state.titles
-            )
-        return self.row_cache[generation]
+        self._ensure_row_cache(generation, generation)
+        return self.row_cache[generation - self.row_cache_offset]
 
     def _draw_square_grid(self, width: int, height: int) -> None:
         size = float(self.state.cell_size)
@@ -147,10 +200,13 @@ class RendererWindow(tk.Toplevel):
         bottom = math.ceil((self.pan_y + height / 2 + size * 2) / size) + 2
         center_x = width / 2
         center_y = height / 2
+        first_generation = max(0, top)
+        last_generation = bottom
+        self._ensure_row_cache(first_generation, last_generation)
 
-        for row in range(max(0, top), bottom + 1):
+        for row in range(first_generation, last_generation + 1):
             row_shift = offset if row % 2 else 0.0
-            row_cells = self._row_for_generation(row)
+            row_cells = self.row_cache[row - self.row_cache_offset]
             row_center = (len(row_cells) - 1) / 2.0
             first_visible = math.floor(row_center + (self.pan_x - center_x - row_shift) / size) - 2
             last_visible = math.ceil(row_center + (self.pan_x - center_x - row_shift + width) / size) + 2
@@ -179,11 +235,14 @@ class RendererWindow(tk.Toplevel):
         bottom = math.ceil((self.pan_y + height / 2 + row_step * 2) / row_step) + 3
         center_x = width / 2
         center_y = height / 2
+        first_generation = max(0, top)
+        last_generation = bottom
+        self._ensure_row_cache(first_generation, last_generation)
 
-        for row in range(max(0, top), bottom + 1):
+        for row in range(first_generation, last_generation + 1):
             y = center_y + row * row_step - self.pan_y
             row_shift = column_step / 2 if self.state.placement == "offset" and row % 2 else 0.0
-            row_cells = self._row_for_generation(row)
+            row_cells = self.row_cache[row - self.row_cache_offset]
             row_center = (len(row_cells) - 1) / 2.0
             first_visible = math.floor(row_center + (self.pan_x - center_x - row_shift) / column_step) - 2
             last_visible = math.ceil(row_center + (self.pan_x - center_x - row_shift + width) / column_step) + 2

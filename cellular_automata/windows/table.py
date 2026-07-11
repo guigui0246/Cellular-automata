@@ -40,6 +40,12 @@ class TableWindow(tk.Toplevel):
     def _resize_inner(self, event: tk.Event) -> None:
         self.canvas.itemconfigure(self.inner_id, width=max(event.width, self.inner.winfo_reqwidth()))
 
+    def _set_cell_text(self, row: int, col: int, value: str) -> None:
+        if self.state.cells[row][col].text == value:
+            return
+        self.state.cells[row][col].text = value
+        self.on_change()
+
     def rebuild(self) -> None:
         for child in self.inner.winfo_children():
             child.destroy()
@@ -59,20 +65,18 @@ class TableWindow(tk.Toplevel):
                 cell_frame = ttk.Frame(self.inner, padding=2)
                 cell_frame.grid(row=row_index + 1, column=col_index + 1, sticky="nsew")
                 text_var = tk.StringVar(value=cell.text)
-                ttk.Combobox(
+                text_picker = ttk.Combobox(
                     cell_frame, textvariable=text_var, values=list(self.state.titles) + [""], state="readonly"
-                ).grid(row=0, column=0, sticky="ew")
-
-                def on_text_change(
-                    *_args: tk.Event | str,
-                    row: int = row_index,
-                    col: int = col_index,
-                    variable: tk.StringVar = text_var
-                ) -> None:
-                    self.state.cells[row][col].text = variable.get()
-                    self.on_change()
-
-                text_var.trace_add("write", on_text_change)
+                )
+                text_picker.grid(row=0, column=0, sticky="ew")
+                text_picker.bind(
+                    "<<ComboboxSelected>>",
+                    lambda _event, row=row_index, col=col_index, variable=text_var: self._set_cell_text(
+                        row,
+                        col,
+                        variable.get(),
+                    ),
+                )
 
                 tk.Button(
                     cell_frame,

@@ -113,6 +113,15 @@ def evolve_row(
     return next_row
 
 
+def advance_row(
+    previous_row: Sequence[CellData],
+    column_count: int,
+    rules: Rules,
+    titles: List[str]
+) -> list[CellData]:
+    return center_row(evolve_row(previous_row, column_count, rules, titles))
+
+
 def center_row(row: Sequence[CellData]) -> list[CellData]:
     active_indexes = [index for index, cell in enumerate(row) if cell.text]
     if not active_indexes:
@@ -185,7 +194,7 @@ def build_automaton_rows(
     rows = [seed_row]
 
     while len(rows) < required_rows:
-        rows.append(center_row(evolve_row(rows[-1], column_count, rules, titles)))
+        rows.append(advance_row(rows[-1], column_count, rules, titles))
 
     # print(rows)
     return rows
