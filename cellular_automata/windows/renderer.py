@@ -143,7 +143,6 @@ class RendererWindow(tk.Toplevel):
     def _draw_square_grid(self, width: int, height: int) -> None:
         size = float(self.state.cell_size)
         offset = size / 2 if self.state.placement == "offset" else 0.0
-        visible_columns = max(1, int(math.ceil(width / size)) + 4)
         top = math.floor((self.pan_y - height / 2 - size * 2) / size) - 2
         bottom = math.ceil((self.pan_y + height / 2 + size * 2) / size) + 2
         center_x = width / 2
@@ -153,8 +152,8 @@ class RendererWindow(tk.Toplevel):
             row_shift = offset if row % 2 else 0.0
             row_cells = self._row_for_generation(row)
             row_center = (len(row_cells) - 1) / 2.0
-            first_visible = int(round(row_center - visible_columns / 2))
-            last_visible = first_visible + visible_columns
+            first_visible = math.floor(row_center + (self.pan_x - center_x - row_shift) / size) - 2
+            last_visible = math.ceil(row_center + (self.pan_x - center_x - row_shift + width) / size) + 2
             for col in range(first_visible, last_visible + 1):
                 x0 = center_x + (col - row_center) * size + row_shift - self.pan_x
                 y0 = center_y + row * size - self.pan_y
@@ -176,7 +175,6 @@ class RendererWindow(tk.Toplevel):
         radius = float(self.state.cell_size) / 2.0
         column_step = math.sqrt(3) * radius
         row_step = 1.5 * radius
-        visible_columns = max(1, int(math.ceil(width / column_step)) + 4)
         top = math.floor((self.pan_y - height / 2 - row_step * 2) / row_step) - 3
         bottom = math.ceil((self.pan_y + height / 2 + row_step * 2) / row_step) + 3
         center_x = width / 2
@@ -187,8 +185,8 @@ class RendererWindow(tk.Toplevel):
             row_shift = column_step / 2 if self.state.placement == "offset" and row % 2 else 0.0
             row_cells = self._row_for_generation(row)
             row_center = (len(row_cells) - 1) / 2.0
-            first_visible = int(round(row_center - visible_columns / 2))
-            last_visible = first_visible + visible_columns
+            first_visible = math.floor(row_center + (self.pan_x - center_x - row_shift) / column_step) - 2
+            last_visible = math.ceil(row_center + (self.pan_x - center_x - row_shift + width) / column_step) + 2
             for col in range(first_visible, last_visible + 1):
                 x = center_x + (col - row_center) * column_step + row_shift - self.pan_x
                 cell = row_cells[col] if 0 <= col < len(row_cells) else CellData()
