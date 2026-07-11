@@ -214,6 +214,7 @@ class AppState:
     hide_text: bool = True
     default_colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"]
     starting_state: str = "[\"\"*inf,titles[0],\"\"*inf]"
+    mirror: bool = True
 
     def resize_grid(self, rows: int, cols: int) -> None:
         rows = max(1, min(64, int(rows)))

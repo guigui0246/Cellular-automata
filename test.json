@@ -1,0 +1,57 @@
+{
+    "rows": 3,
+    "cols": 3,
+    "shape": "square",
+    "placement": "offset",
+    "titles": [
+        "1",
+        "2",
+        "3"
+    ],
+    "cells": [
+        [
+            {
+                "text": "2",
+                "background": "#ffffff"
+            },
+            {
+                "text": "1",
+                "background": "#ffffff"
+            },
+            {
+                "text": "1",
+                "background": "#ffffff"
+            }
+        ],
+        [
+            {
+                "text": "1",
+                "background": "#ffffff"
+            },
+            {
+                "text": "1",
+                "background": "#ffffff"
+            },
+            {
+                "text": "1",
+                "background": "#ffffff"
+            }
+        ],
+        [
+            {
+                "text": "1",
+                "background": "#ffffff"
+            },
+            {
+                "text": "1",
+                "background": "#ffffff"
+            },
+            {
+                "text": "1",
+                "background": "#ffffff"
+            }
+        ]
+    ],
+    "hide_text": true,
+    "mirror": true
+}

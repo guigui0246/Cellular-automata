@@ -44,6 +44,8 @@ class TableWindow(tk.Toplevel):
         if self.state.cells[row][col].text == value:
             return
         self.state.cells[row][col].text = value
+        if self.state.mirror:
+            self.state.cells[col][row].text = value
         self.on_change()
 
     def rebuild(self) -> None:

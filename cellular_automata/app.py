@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 
+from .save import load
 from .core import AppState
 from .windows.renderer import RendererWindow
 from .windows.settings import SettingsWindow
@@ -9,11 +11,14 @@ from .windows.table import TableWindow
 
 
 class Application:
-    def __init__(self) -> None:
+    def __init__(self, filepath: str | None = None) -> None:
         self.root = tk.Tk()
         self.root.title("Settings")
         self.root.geometry("420x420")
-        self.state = AppState()
+        if filepath:
+            self.state = load(filepath)
+        else:
+            self.state = AppState()
 
         self.renderer = RendererWindow(self.root, self.state)
         self.table = TableWindow(self.root, self.state, self.on_state_change)
@@ -41,9 +46,12 @@ class Application:
         self.root.mainloop()
 
 
-def main() -> None:
-    Application().run()
+def main(filepath: str | None = None) -> None:
+    Application(filepath).run()
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        main()
